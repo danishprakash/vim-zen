@@ -1,9 +1,9 @@
 " vimzen - a minimal plugin manager for vim 
 
 let s:installation_path = ''
-let s:zen_win = 1
+let s:zen_win = 0
 
-" set install dir
+" set installation path for plugins
 if has('nvim')
 	if !isdirectory($HOME . '/.local/share/nvim/plugged')
 		call mkdir($HOME . '/.local/share/nvim/plugged')
@@ -40,15 +40,26 @@ endif
 " 	endfunction
 
 
-function! vimzen#start_window() abort
+" assign name to the plugin buffer window
+function! s:assign_buffer_name() abort
+    let name = '[VimZen]'
+    silent! execute "f " . l:name 
+endfunction 
+
+
+" start a new buffer window for plugin operations
+function! s:start_window() abort
     execute s:zen_win . 'wincmd w'
     if !exists('b:plug')
-        rightbelow belowright new
+        aboveleft new
         nnoremap <silent> <buffer> q :q<cr>
         let b:plug = 1
         let s:zen_win = winnr()
+    else
+        %d
     endif
     setlocal buftype=nofile bufhidden=wipe nobuflisted noswapfile nowrap cursorline
+    call s:assign_buffer_name()
 endfunction 
 
 
@@ -58,10 +69,9 @@ endfunction
 function! vimzen#install() abort
     let l:argument = ['junegunn/goyo.vim', 'arcticicestudio/nord-vim']
 
-    call vimzen#start_window()
+    call s:start_window()
     call append(0, "VimZen - Installing plugins...")
-
-    normal! 2G
+    call append(1, "==============================")
     redraw
 
     for l:plugin in l:argument 
@@ -76,10 +86,12 @@ function! vimzen#install() abort
         execute "set rtp+=" . l:install_path 
         redraw 
     endfor
-    call setline(1, "VimZen - Installation finished")
+
+    call setline(1, "VimZen - Installation finished!")
+    call setline(2, "===============================")
     redraw 
 endfunction
 
-" command! -nargs=* -bar -bang -complete=customlist,s:names ZenInstall call vimzen#install(<bang>0, [<f-args>])
+command! -nargs=* -bar -bang -complete=customlist,s:names ZenInstall call vimzen#install(<bang>0, [<f-args>])
 " command -nargs=* -bar -complete=customlist,vimzen#complete ZenInstall
 "                 \ call vimzen#install()
