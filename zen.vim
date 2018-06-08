@@ -1,7 +1,8 @@
-" vimzen - a minimal plugin manager for vim 
+" vim-zen - a minimal plugin manager for vim 
 
 let s:installation_path = ''
 let s:zen_win = 0
+let g:plugins = []
 
 " set installation path for plugins
 if has('nvim')
@@ -9,8 +10,6 @@ if has('nvim')
 		call mkdir($HOME . '/.local/share/nvim/plugged')
 	endif
 	let s:installation_path = $HOME . '/.local/share/nvim/plugged'
-
-" TODO: make dir for vim and windows
 else
 	if !isdirectory($HOME . '.vim/plugged')
 		call mkdir($HOME . '.vim/plugged')
@@ -19,25 +18,28 @@ else
 endif
 
 
-" function! vimzen#add(remote, ...)
+function! zen#add(remote, ...)
+    call add(g:plugins, a:remote)
 
-" 	if a:0 == 0 || a:0 > 1
-" 		echo "Incomplete arguments"
-" 		stop
-" 	endif
+    " TODO: sanitize remote url
+	" create path for remote
+	" if a:remote =~ '^https:\/\/.\+'
+	" 	let l:remote = a:remote
+	" elseif a:remote =~ '^http:\/\/.\+'
+	" 	let l:remote = a:remote
+	" 	let l:remote = substitute(l:remote, '^http:\/\/.\+', 'https://', '')
+	" elseif a:remote =~ '^.\+/.\+'
+	" 	l:remote = 'https://github.com/' . a:remote . '.git'
+	" else
+	" 	echom "Failed to create remote repository path"
+	" 	stop
 
-" 	" create path for remote
-" 	if a:remote =~ '^https:\/\/.\+'
-" 		let l:remote = a:remote
-" 	elseif a:remote =~ '^http:\/\/.\+'
-" 		let l:remote = a:remote
-" 		let l:remote = substitute(l:remote, '^http:\/\/.\+', 'https://', '')
-" 	elseif a:remote =~ '^.\+/.\+'
-" 		l:remote = 'https://github.com/' . a:remote . '.git'
-" 	else
-" 		echom "Failed to create remote repository path"
-" 		stop
-" 	endfunction
+    " TODO: add enable config
+    if a:0 == 1
+        let l:options = a:1
+        echom l:options
+    endif
+endfunction
 
 
 " assign name to the plugin buffer window
@@ -51,7 +53,7 @@ endfunction
 function! s:start_window() abort
     execute s:zen_win . 'wincmd w'
     if !exists('b:plug')
-        aboveleft new
+        vertical new
         nnoremap <silent> <buffer> q :q<cr>
         let b:plug = 1
         let s:zen_win = winnr()
@@ -66,18 +68,20 @@ endfunction
 
 " Check if plugin is already installed
 " git clone if not and add path to rtp
-function! vimzen#install() abort
-    let l:argument = ['junegunn/goyo.vim', 'arcticicestudio/nord-vim']
+function! zen#install() abort
+    let l:arguments = g:plugins
 
     call s:start_window()
     call append(0, "VimZen - Installing plugins...")
     call append(1, "==============================")
+    normal! 2G
     redraw
 
-    for l:plugin in l:argument 
+    for l:plugin in l:arguments 
         let l:install_path = s:installation_path . "/" . split(l:plugin, "/")[-1]
         if !isdirectory(l:install_path)
-            let l:cmd = "git clone " . "https://github.com/" . l:plugin . " " . l:install_path 
+            let l:cmd = "git clone " . "https://github.com/" . l:plugin . ".git" . " " . l:install_path 
+            echom l:cmd
             let l:cmd_result =  system(l:cmd)
             call append(line('$'), '- ' . l:plugin . ': ' . l:cmd_result)
         else
@@ -85,13 +89,14 @@ function! vimzen#install() abort
         endif
         execute "set rtp+=" . l:install_path 
         redraw 
-    endfor
+    endfor 
 
     call setline(1, "VimZen - Installation finished!")
     call setline(2, "===============================")
     redraw 
+
 endfunction
 
-command! -nargs=* -bar -bang -complete=customlist,s:names ZenInstall call vimzen#install(<bang>0, [<f-args>])
-" command -nargs=* -bar -complete=customlist,vimzen#complete ZenInstall
-"                 \ call vimzen#install()
+" command! -nargs=* -bar -bang -complete=customlist,s:names ZenInstall call zen#install(<bang>0, [<f-args>])
+" command -nargs=* -bar -complete=customlist,zen#complete ZenInstall
+"                 \ call zen#install()
