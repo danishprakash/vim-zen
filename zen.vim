@@ -39,6 +39,7 @@ function! zen#add(remote, ...)
         let l:options = a:1
         echom l:options
     endif
+    call s:define_commands()
 endfunction
 
 
@@ -63,7 +64,6 @@ function! s:start_window() abort
     setlocal buftype=nofile bufhidden=wipe nobuflisted noswapfile nowrap cursorline
     call s:assign_buffer_name()
 endfunction 
-
 
 
 " Check if plugin is already installed
@@ -97,6 +97,7 @@ function! zen#install() abort
 
 endfunction
 
-" command! -nargs=* -bar -bang -complete=customlist,s:names ZenInstall call zen#install(<bang>0, [<f-args>])
-" command -nargs=* -bar -complete=customlist,zen#complete ZenInstall
-"                 \ call zen#install()
+
+function! s:define_commands() abort
+    command! -nargs=* -bar -bang -complete=customlist,s:names ZenInstall call zen#install()
+endfunction 
