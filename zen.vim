@@ -19,7 +19,7 @@ endif
 
 
 function! zen#add(remote, ...)
-    call add(g:plugins, a:remote)
+    call add(g:plugins, split(a:remote, "/")[-1])
 
     " TODO: sanitize remote url
 	" create path for remote
@@ -37,7 +37,6 @@ function! zen#add(remote, ...)
     " TODO: add enable config
     if a:0 == 1
         let l:options = a:1
-        echom l:options
     endif
     call s:define_commands()
 endfunction
@@ -81,7 +80,6 @@ function! zen#install() abort
         let l:install_path = s:installation_path . "/" . split(l:plugin, "/")[-1]
         if !isdirectory(l:install_path)
             let l:cmd = "git clone " . "https://github.com/" . l:plugin . ".git" . " " . l:install_path 
-            echom l:cmd
             let l:cmd_result =  system(l:cmd)
             call append(line('$'), '- ' . l:plugin . ': ' . l:cmd_result)
         else
@@ -100,4 +98,34 @@ endfunction
 
 function! s:define_commands() abort
     command! -nargs=* -bar -bang -complete=customlist,s:names ZenInstall call zen#install()
+    command! -nargs=* -bar -bang -complete=customlist,s:names ZenClean call zen#clean()
 endfunction 
+
+
+" remove unused plugins
+" TODO: mv clean remove
+function! zen#clean() abort
+    call s:start_window()
+    call append(0, "VimZen - Removing unused plugins...")
+    call append(1, "===================================")
+
+    if g:plugins == []
+        call append(line('$'), 'No plugins installed.')
+    endif
+
+    let l:cloned_plugins = split(globpath(s:installation_path, "*"), "\n")
+    for l:dir in l:cloned_plugins 
+        let l:unused_plugins = []
+        let l:plugin_dir_name = split(l:dir, "/")[-1]
+        let l:plugin_dir_path = s:installation_path . "/" . l:plugin_dir_name 
+
+        if index(g:plugins, l:plugin_dir_name) == -1
+            call add(l:unused_plugins, l:plugin_dir_path)
+        endif
+
+        for l:item in l:unused_plugins
+            call append(line('$'), '- ' . l:item)
+        endfor
+    endfor
+endfunction 
+
