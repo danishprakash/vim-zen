@@ -1,9 +1,13 @@
 " vim-zen - a minimal plugin manager for vim 
 
 let s:installation_path = ''
-let s:zen_win = 0
-let g:plugins = {}
-let g:plugin_names = []
+
+function! zen#init() abort
+    let s:zen_win = 0
+    let g:plugins = {}
+    let g:plugin_names = []
+endfunction
+
 
 " set installation path for plugins
 if has('nvim')
@@ -35,6 +39,7 @@ function! zen#add(remote, ...)
     let l:plugin_name = split(a:remote, '/')[-1]
     let g:plugins[l:plugin_name] = {'name': l:plugin_name, 'remote': l:remote_name}
 
+    execute "set rtp+=" . s:installation_path . '/' . l:plugin_name 
     call add(g:plugin_names, l:plugin_name)
 
     " TODO: add enable config
@@ -87,14 +92,13 @@ function! zen#install() abort
         else
             call append(line('$'), '- ' . l:plugin['name'] . ': ' . 'Skipped')
         endif
-        execute "set rtp+=" . l:install_path 
         redraw 
     endfor 
 
     call setline(1, "VimZen - Installation finished!")
     call setline(2, "===============================")
     redraw 
-
+    " TODO: source installed plugins for them to be readily available 
 endfunction
 
 
@@ -132,13 +136,12 @@ function! zen#remove() abort
         let l:plugin_dir_name = split(l:dir, '/')[-1]
         let l:plugin_dir_path = s:installation_path . "/" . l:plugin_dir_name 
 
-        if index(g:plugin_names, l:plugin_dir_name) == -1
-            echom string(l:plugin_dir_name)
+        " if index(g:plugin_names, l:plugin_dir_name) == -1
+        if !has_key(g:plugins, l:plugin_dir_name)
             call add(l:unused_plugins, l:plugin_dir_path)
             call append(line('$'), '- ' . l:plugin_dir_path)
         endif
     endfor
-    echom string(l:unused_plugins)
 
     if l:unused_plugins == []
         call append(line('$'), 'No plugins to remove.')
@@ -150,12 +153,9 @@ function! zen#remove() abort
         normal! jdG
         for l:item in l:unused_plugins 
             let l:plugin_name = split(l:item, '/')[-1]
-            call remove(g:plugins, l:plugin_name)
-            call remove(g:plugin_names, l:plugin_name)
-            call delete(expand(l:item), 'rf')
+            let l:cmd_result = system('rm -rf ' . l:item)
             call append(line('$'), '- ' . l:item . ' - Removed!')
-            " unlet g:plugins[l:plugin_name]
-            " unlet g:plugin_names[l:plugin_name]
+            call remove(g:plugin_names, l:plugin_name)
         endfor
     endif
     redraw
