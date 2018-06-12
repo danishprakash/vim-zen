@@ -23,7 +23,24 @@ else
 endif
 
 
+function! s:load_plugin(plugin) abort
+    let l:plugin = g:plugins[a:plugin]
+    let l:plugin_path = l:plugin['path']
+    let l:patterns = ['plugin/**/*.vim', 'after/plugin/**/*.vim']
+
+    for pattern in l:patterns
+        for vimfile in split(globpath(l:plugin_path, pattern), '\n')
+            execute 'source' vimfile
+            " execute 'source ' . vimfile
+        endfor
+    endfor
+endfunction 
+
+
 function! zen#add(remote, ...)
+    let l:plugin_name = split(a:remote, '/')[-1]
+    let l:plugin_dir = s:installation_path . '/' . l:plugin_name 
+
 	" sanitize remote uri
 	if a:remote =~ '^https:\/\/.\+'
 		let l:remote_name = a:remote
@@ -36,10 +53,10 @@ function! zen#add(remote, ...)
 		echom "Failed to create remote repository path"
     endif
 
-    let l:plugin_name = split(a:remote, '/')[-1]
-    let g:plugins[l:plugin_name] = {'name': l:plugin_name, 'remote': l:remote_name}
+    let g:plugins[l:plugin_name] = {'name': l:plugin_name, 'remote': l:remote_name, 'path': l:plugin_dir}
 
-    execute "set rtp+=" . s:installation_path . '/' . l:plugin_name 
+    " execute "set rtp+=" . s:installation_path . '/' . l:plugin_name 
+    execute "set rtp+=" . l:plugin_dir 
     call add(g:plugin_names, l:plugin_name)
 
     " TODO: add enable config
@@ -89,6 +106,7 @@ function! zen#install() abort
             let l:cmd = "git clone " . l:plugin['remote'] . " " . l:install_path 
             let l:cmd_result =  system(l:cmd)
             call append(line('$'), '- ' . l:plugin['name'] . ': ' . l:cmd_result)
+            call s:load_plugin(l:plugin['name'])
         else
             call append(line('$'), '- ' . l:plugin['name'] . ': ' . 'Skipped')
         endif
@@ -122,7 +140,9 @@ endfunction
 " remove unused plugins
 function! zen#remove() abort
     let l:unused_plugins = []
+    let l:cloned_plugins = split(globpath(s:installation_path, "*"), "\n")
 
+    " TODO: modularize this for reuse
     call s:start_window()
     call append(0, "VimZen - Removing unused plugins...")
     call append(1, "===================================")
@@ -131,12 +151,10 @@ function! zen#remove() abort
         call append(line('$'), 'No plugins installed.')
     endif
 
-    let l:cloned_plugins = split(globpath(s:installation_path, "*"), "\n")
     for l:dir in l:cloned_plugins 
         let l:plugin_dir_name = split(l:dir, '/')[-1]
         let l:plugin_dir_path = s:installation_path . "/" . l:plugin_dir_name 
 
-        " if index(g:plugin_names, l:plugin_dir_name) == -1
         if !has_key(g:plugins, l:plugin_dir_name)
             call add(l:unused_plugins, l:plugin_dir_path)
             call append(line('$'), '- ' . l:plugin_dir_path)
