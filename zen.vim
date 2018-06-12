@@ -23,6 +23,23 @@ else
 endif
 
 
+function! s:populate_window(message, flag) abort
+    let l:heading = 'VimZen - ' . a:message 
+    
+    " when populating window for the first time
+    if !(a:flag)
+        call s:start_window()
+        call append(0, l:heading)
+        call append(1, repeat('=', len(l:heading)))
+    else
+        call setline(1, l:heading)
+        call setline(2, repeat('=', len(l:heading)))
+    endif
+    normal! 2G
+    redraw
+endfunction 
+
+
 function! s:load_plugin(plugin) abort
     let l:plugin = g:plugins[a:plugin]
     let l:plugin_path = l:plugin['path']
@@ -93,11 +110,7 @@ endfunction
 " Check if plugin is already installed
 " git clone if not and add path to rtp
 function! zen#install() abort
-    call s:start_window()
-    call append(0, "VimZen - Installing plugins...")
-    call append(1, "==============================")
-    normal! 2G
-    redraw
+    call s:populate_window('Installing plugins...', 0)
 
     for key in keys(g:plugins)
         let l:plugin = g:plugins[key]
@@ -113,10 +126,7 @@ function! zen#install() abort
         redraw 
     endfor 
 
-    call setline(1, "VimZen - Installation finished!")
-    call setline(2, "===============================")
-    redraw 
-    " TODO: source installed plugins for them to be readily available 
+    call s:populate_window('Installation finished!', 1)
 endfunction
 
 
@@ -142,10 +152,7 @@ function! zen#remove() abort
     let l:unused_plugins = []
     let l:cloned_plugins = split(globpath(s:installation_path, "*"), "\n")
 
-    " TODO: modularize this for reuse
-    call s:start_window()
-    call append(0, "VimZen - Removing unused plugins...")
-    call append(1, "===================================")
+    call s:populate_window('Removing unused plugins...', 0)
 
     if g:plugins == {}
         call append(line('$'), 'No plugins installed.')
@@ -177,5 +184,6 @@ function! zen#remove() abort
         endfor
     endif
     redraw
+    call s:populate_window('Finished cleaning!', 1)
 endfunction 
 
