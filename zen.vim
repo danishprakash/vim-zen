@@ -6,6 +6,7 @@ function! zen#init() abort
     let s:zen_win = 0
     let g:plugins = {}
     let g:plugin_names = []
+    call s:define_commands()
 endfunction
 
 
@@ -24,7 +25,7 @@ endif
 
 
 function! s:populate_window(message, flag) abort
-    let l:heading = 'VimZen - ' . a:message 
+    let l:heading = 'Zen - ' . '[ ' . a:message . ' ]'
     
     " when populating window for the first time
     if !(a:flag)
@@ -41,14 +42,12 @@ endfunction
 
 
 function! s:load_plugin(plugin) abort
-    let l:plugin = g:plugins[a:plugin]
-    let l:plugin_path = l:plugin['path']
+    let l:plugin_path = g:plugins[a:plugin]['path']
     let l:patterns = ['plugin/**/*.vim', 'after/plugin/**/*.vim']
 
     for pattern in l:patterns
         for vimfile in split(globpath(l:plugin_path, pattern), '\n')
             execute 'source' vimfile
-            " execute 'source ' . vimfile
         endfor
     endfor
 endfunction 
@@ -58,7 +57,6 @@ function! zen#add(remote, ...)
     let l:plugin_name = split(a:remote, '/')[-1]
     let l:plugin_dir = s:installation_path . '/' . l:plugin_name 
 
-	" sanitize remote uri
 	if a:remote =~ '^https:\/\/.\+'
 		let l:remote_name = a:remote
 	elseif a:remote =~ '^http:\/\/.\+'
@@ -72,7 +70,6 @@ function! zen#add(remote, ...)
 
     let g:plugins[l:plugin_name] = {'name': l:plugin_name, 'remote': l:remote_name, 'path': l:plugin_dir}
 
-    " execute "set rtp+=" . s:installation_path . '/' . l:plugin_name 
     execute "set rtp+=" . l:plugin_dir 
     call add(g:plugin_names, l:plugin_name)
 
@@ -80,13 +77,12 @@ function! zen#add(remote, ...)
     if a:0 == 1
         let l:options = a:1
     endif
-    call s:define_commands()
 endfunction
 
 
 " assign name to the plugin buffer window
 function! s:assign_buffer_name() abort
-    let name = '[VimZen]'
+    let name = '[Zen]'
     silent! execute "f " . l:name 
 endfunction 
 
@@ -111,7 +107,6 @@ endfunction
 " git clone if not and add path to rtp
 function! zen#install() abort
     call s:populate_window('Installing plugins...', 0)
-
     for key in keys(g:plugins)
         let l:plugin = g:plugins[key]
         let l:install_path = s:installation_path . "/" . l:plugin['name']
@@ -125,14 +120,15 @@ function! zen#install() abort
         endif
         redraw 
     endfor 
-
     call s:populate_window('Installation finished!', 1)
 endfunction
 
 
+" set command names for functions
 function! s:define_commands() abort
     command! -nargs=* -bar -bang -complete=customlist,s:names ZenInstall call zen#install()
     command! -nargs=* -bar -bang -complete=customlist,s:names ZenRemove call zen#remove()
+    command! -nargs=+ -bar Plugin call zen#add(<args>)
 endfunction 
 
 
