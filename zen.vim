@@ -128,6 +128,7 @@ endfunction
 function! s:define_commands() abort
     command! -nargs=* -bar -bang -complete=customlist,s:names ZenInstall call zen#install()
     command! -nargs=* -bar -bang -complete=customlist,s:names ZenRemove call zen#remove()
+    command! -nargs=* -bar -bang -complete=customlist,s:names ZenUpdate call zen#update()
     command! -nargs=+ -bar Plugin call zen#add(<args>)
 endfunction 
 
@@ -183,3 +184,23 @@ function! zen#remove() abort
     call s:populate_window('Finished cleaning!', 1)
 endfunction 
 
+
+" update plugins
+function! zen#update() abort 
+    call s:populate_window('Updating plugins..', 0)
+    for l:plugin in keys(g:plugins)
+        let l:plugin_path = g:plugins[l:plugin]['path']
+        let l:cmd = 'git -C "' . l:plugin_path . '" pull'
+        let l:output = system(l:cmd)
+        
+        if l:output =~# '\mAlready up to date.'
+            call append(line('$'), '- ' . g:plugins[l:plugin]['name'] . ': Skipped (latest)')
+        elseif l:output =~# '\mFrom'
+            call append(line('$'), '- ' . g:plugins[l:plugin]['name'] . ': Updated')
+        else
+            call append(line('$'), '- ' . g:plugins[l:plugin]['name'] . ': ERROR ' . l:output)
+        endif
+        redraw 
+    endfor
+    call s:populate_window('Finished updating plugins!', 1)
+endfunction 
