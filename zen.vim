@@ -1,27 +1,42 @@
-" vim-zen - a minimal plugin manager for vim 
+" ==========================================================
+" Name:         vim-zen: Vim plugin manager
+" Author:       Danish Prakash
+" HomePage:     https://github.com/prakashdanish/vim-zen
+" Version:      1.0.0
+" ==========================================================
 
-let s:installation_path = ''
 
 function! zen#init() abort
     let s:zen_win = 0
     let g:plugins = {}
     let g:plugin_names = []
+    let s:installation_path = ''
+
+    " set installation path for plugins
+    if has('nvim')
+        if !isdirectory($HOME . '/.local/share/nvim/plugged')
+            call mkdir($HOME . '/.local/share/nvim/plugged')
+        endif
+        let s:installation_path = $HOME . '/.local/share/nvim/plugged'
+    else
+        if !isdirectory($HOME . '.vim/plugged')
+            call mkdir($HOME . '.vim/plugged')
+        endif
+        let s:installation_path = $HOME . '.vim/plugged'
+    endif
+
     call s:define_commands()
+    autocmd VimEnter * call s:git_installed()
 endfunction
 
 
-" set installation path for plugins
-if has('nvim')
-	if !isdirectory($HOME . '/.local/share/nvim/plugged')
-		call mkdir($HOME . '/.local/share/nvim/plugged')
-	endif
-	let s:installation_path = $HOME . '/.local/share/nvim/plugged'
-else
-	if !isdirectory($HOME . '.vim/plugged')
-		call mkdir($HOME . '.vim/plugged')
-	endif
-	let s:installation_path = $HOME . '.vim/plugged'
-endif
+function! s:git_installed() abort
+    if !executable('git')
+        echohl ErrorMsg
+        echom "[vim-zen] git is required."
+        echohl None
+    endif
+endfunction 
 
 
 " list all installed plugins
@@ -34,7 +49,7 @@ endfunction
 
 
 function! s:populate_window(message, flag) abort
-    let l:heading = 'Zen - ' . '[ ' . a:message . ' ]'
+    let l:heading = 'vim-zen - ' . '[ ' . a:message . ' ]'
     
     " when populating window for the first time
     if !(a:flag)
@@ -90,7 +105,7 @@ endfunction
 
 " assign name to the plugin buffer window
 function! s:assign_buffer_name() abort
-    let name = '[Zen]'
+    let name = '[vim-zZen]'
     silent! execute "f " . l:name 
 endfunction 
 
@@ -136,10 +151,10 @@ endfunction
 
 " user defined commands for functions
 function! s:define_commands() abort
+    command! -nargs=+ -bar Plugin call zen#add(<args>)
     command! -nargs=* -bar -bang -complete=customlist,s:names ZenInstall call zen#install()
     command! -nargs=* -bar -bang -complete=customlist,s:names ZenRemove call zen#remove()
     command! -nargs=* -bar -bang -complete=customlist,s:names ZenUpdate call zen#update()
-    command! -nargs=+ -bar Plugin call zen#add(<args>)
 endfunction 
 
 
@@ -184,12 +199,10 @@ function! zen#remove() abort
 
     let l:count = 4
     if s:warning_prompt('Delete the following plugins?')
-        normal! jjdG
         for l:item in l:unused_plugins 
             let l:plugin_name = split(l:item, '/')[-1]
             let l:cmd_result = system('rm -rf ' . l:item)
             call setline(l:count, '- ' . l:item . ' - Removed!')
-            call remove(g:plugin_names, l:plugin_name)
             let l:count = l:count + 1
         endfor
     endif
