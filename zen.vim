@@ -213,9 +213,16 @@ endfunction
 
 " update plugins
 function! zen#update() abort 
-    let l:count = 4
     call s:populate_window('Updating plugins..', 0)
     call s:list_plugins()
+
+    if len(g:plugins) > 1
+        call s:update_python()
+        call s:populate_window('Finished updating plugins!', 1)
+        return
+    endif
+
+    let l:count = 4
     for l:plugin in keys(g:plugins)
         let l:plugin_path = g:plugins[l:plugin]['path']
         let l:cmd = 'git -C "' . l:plugin_path . '" pull'
@@ -234,4 +241,43 @@ function! zen#update() abort
     endfor
     call s:populate_window('Finished updating plugins!', 1)
 endfunction 
+
+
+function! s:update_python() abort
+let py_exe = has('python') ? 'python' : 'python3'
+execute py_exe "<< EOF"
+import vim
+import Queue
+import commands
+import threading
+
+class ZenThread(threading.Thread):
+    def __init__(self, cmd, queue):
+        threading.Thread.__init__(self)
+        self.cmd = cmd
+        self.queue = queue 
+
+    def run(self):
+        (status, output) = commands.getstatusoutput(self.cmd)
+        self.queue.put((self.cmd, output, status))
+
+def main():
+    plugins = vim.eval('g:plugins') 
+    result_queue = Queue.Queue()
+    commands = list()
+    git_cmd = 'git -C'
+    for key, value in plugins.items():
+        commands.append(str(git_cmd + ' \"' + value['path'] + '\" pull'))
+
+    for cmd in commands:
+        thread = ZenThread(cmd, result_queue)
+        thread.start()
+
+    while threading.active_count() > 1 or not result_queue.empty():
+        while not result_queue.empty():
+            (cmd, output, status) = result_queue.get()
+
+main()
+EOF
+endfunction
 
