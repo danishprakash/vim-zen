@@ -11,6 +11,7 @@ function! zen#init() abort
     let g:plugins = {}
     let g:plugin_names = []
     let s:installation_path = ''
+    let s:plugin_display_order = {}
 
     " set installation path for plugins
     if has('nvim')
@@ -41,8 +42,11 @@ endfunction
 
 " list all installed plugins
 function! s:list_plugins() abort
+    let l:count = 4
     for l:plugin in keys(g:plugins)
         call append(line('$'), '- ' . g:plugins[l:plugin]['name'] . ': ')
+        let s:plugin_display_order[g:plugins[l:plugin]['name']] = l:count 
+        let l:count = l:count + 1
     endfor
     redraw 
 endfunction 
@@ -114,7 +118,7 @@ endfunction
 
 " assign name to the plugin buffer window
 function! s:assign_buffer_name() abort
-    let name = '[vim-zZen]'
+    let name = '[vim-zen]'
     silent! execute "f " . l:name 
 endfunction 
 
@@ -156,14 +160,15 @@ function! zen#install() abort
     if len(l:plugins_to_install) > 1
         call s:update_python('install', l:plugins_to_install)
     else
+        " TODO: fix this
         for cmd in l:plugins_to_install 
             let l:cmd_result =  system(l:cmd)
             call setline(l:count, '- ' . l:plugin['name'] . ': ' . l:cmd_result)
             call s:load_plugin(l:plugin['name'])
             let l:count = l:count + 1
         endfor
+        call s:populate_window('Installation finished!', 1)
     endif
-    call s:populate_window('Installation finished!', 1)
     redraw
 endfunction
 
@@ -257,6 +262,7 @@ function! s:update_python(mode, plugins_to_install) abort
 let py_exe = has('python') ? 'python' : 'python3'
 execute py_exe "<< EOF"
 import vim
+import time
 import Queue
 import commands
 import threading
@@ -275,38 +281,48 @@ class ZenThread(threading.Thread):
 
 def install():
     count = 4
+    thread_list = list()
+    result_queue = Queue.Queue()
     plugins = vim.eval('g:plugins')
     path = vim.eval('s:installation_path')
     plugins_to_install = vim.eval('a:plugins_to_install')
-    result_queue = Queue.Queue()
+    plugin_display_order = vim.eval('s:plugin_display_order')
+
     if plugins_to_install == []:
         return
 
+    start_time = time.time()
     for cmd in plugins_to_install:
-        print cmd
         plugin_name = cmd.split('/')[-1]
         plugin_path = path + '/' + plugin_name 
-        print plugin_name 
         to_install = vim.eval('!isdirectory("{}")'.format(plugin_path))
-        print to_install 
         if to_install:
-            print 'Inside to_install for ' + plugin_name 
             thread = ZenThread(cmd, result_queue)
+            thread_list.append(thread)
             thread.start()
-            vim.eval('setline({0}, "- {1}: Installed")'.format(count, plugin_name))
+            # vim.eval('setline({0}, "- {1}: Installed")'.format(plugin_display_order[plugin_name], plugin_name))
         else:
-            print plugin_name, ' skipped '
-            vim.eval('append({0}, "- {1}: Skipped")'.format(count, plugin_name))
+            vim.eval('setline({0}, "- {1}: Skipped")'.format(plugin_display_order[plugin_name], plugin_name))
         count += 1
 
-    # while threading.active_count() > 1 or not result_queue.empty():
-    # whilwhile not result_queue.empty():
-    # whil    (cmd, output, status) = result_queue.get()
-    # whil    # vim.eval('append(line("$"), {}, {}'.format(cmd, status))
+    while threading.active_count() > 1 or not result_queue.empty():
+        while not result_queue.empty():
+            (cmd, output, status) = result_queue.get()
+            plugin_name = cmd.split('/')[-1]
+            print cmd, output, status
+            if status == 0:
+                vim.eval('s:load_plugin("{}")'.format(plugin_name))
+                vim.eval('setline({0}, "- {1}: Installed")'.format(plugin_display_order[plugin_name], plugin_name))
+            else:
+                vim.eval('setline({0}, "- {1}: [ERROR] {2}")'.format(plugin_display_order[plugin_name], plugin_name, output))
 
-    vim.eval('s:populate_window("Finished Installation!!", 1)')
+    for thread in thread_list:
+        thread.join()
+
+    vim.eval('s:populate_window("Installation finished!\t|\t Time: {0}", 1)'.format(time.time()-start_time))
 
 
+# TODO: update this method to reflect status display
 def update():
     plugins = vim.eval('g:plugins') 
     result_queue = Queue.Queue()
