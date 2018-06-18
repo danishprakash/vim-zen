@@ -44,7 +44,7 @@ endfunction
 function! s:list_plugins() abort
     let l:count = 4
     for l:plugin in keys(g:plugins)
-        call append(line('$'), '- ' . g:plugins[l:plugin]['name'] . ': ')
+        call append(line('$'), '[ ] ' . g:plugins[l:plugin]['name'] . ': ')
         let s:plugin_display_order[g:plugins[l:plugin]['name']] = l:count 
         let l:count = l:count + 1
     endfor
@@ -59,10 +59,10 @@ function! s:populate_window(message, flag) abort
     if !(a:flag)
         call s:start_window()
         call append(0, l:heading)
-        call append(1, repeat('─', len(l:heading)))
+        call append(1, repeat('=', len(l:heading)))
     else
         call setline(1, l:heading)
-        call setline(2, repeat('─', len(l:heading)))
+        call setline(2, repeat('=', len(l:heading)))
     endif
     redraw
 endfunction 
@@ -143,6 +143,7 @@ endfunction
 function! zen#install() abort
     let l:count = 4
     let l:plugins_to_install = []
+    let l:populate_window_message = 'Installation finished'
     call s:populate_window('Installing plugins...', 0)
     call s:list_plugins()
     for key in keys(g:plugins)
@@ -152,7 +153,7 @@ function! zen#install() abort
             let l:cmd = "git clone " . l:plugin['remote'] . " " . l:install_path 
             call add(l:plugins_to_install, l:cmd)
         else
-            call setline(l:count, '- ' . l:plugin['name'] . ': ' . 'Skipped')
+            call setline(l:count, '[-] ' . l:plugin['name'] . ': ' . 'Skipped')
         endif
         let l:count = l:count + 1
         redraw 
@@ -160,14 +161,22 @@ function! zen#install() abort
     if len(l:plugins_to_install) > 1
         call s:update_python('install', l:plugins_to_install)
     else
-        " TODO: fix this
         for cmd in l:plugins_to_install 
+            let l:plugin_name = split(cmd, '/')[-1]
             let l:cmd_result =  system(l:cmd)
-            call setline(l:count, '- ' . l:plugin['name'] . ': ' . l:cmd_result)
+            if l:cmd_result =~ 'fatal'
+                let l:populate_window_message = l:populate_window_message . ' with errors'
+                let l:installation_status = 'x'
+                let l:cmd_result = 'Failed (' . l:cmd_result . ')'
+            else
+                let l:installation_status = '+'
+                let l:cmd_result = 'Installed'
+            endif
+            call setline(s:plugin_display_order[l:plugin_name], '[' . l:installation_status . '] ' . l:plugin_name . ': ' . l:cmd_result)
             call s:load_plugin(l:plugin['name'])
             let l:count = l:count + 1
         endfor
-        call s:populate_window('Installation finished!', 1)
+        call s:populate_window(l:populate_window_message, 1)
     endif
     redraw
 endfunction
@@ -201,7 +210,7 @@ function! zen#remove() abort
         if !has_key(g:plugins, l:plugin_dir_name)
             echom string(l:count)
             call add(l:unused_plugins, l:plugin_dir_path)
-            call setline(l:count, '- ' . l:plugin_dir_path)
+            call setline(l:count, '[ ] ' . l:plugin_dir_path)
             let l:count = l:count + 1
             redraw
         endif
@@ -217,7 +226,7 @@ function! zen#remove() abort
         for l:item in l:unused_plugins 
             let l:plugin_name = split(l:item, '/')[-1]
             let l:cmd_result = system('rm -rf ' . l:item)
-            call setline(l:count, '- ' . l:item . ' - Removed!')
+            call setline(l:count, '[x] ' . l:item . ' - Removed!')
             let l:count = l:count + 1
         endfor
     endif
@@ -227,6 +236,7 @@ endfunction
 
 
 " update plugins
+" TODO: show status on buffer, add [ ]
 function! zen#update() abort 
     call s:populate_window('Updating plugins..', 0)
     call s:list_plugins()
