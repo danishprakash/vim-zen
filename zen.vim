@@ -153,7 +153,7 @@ function! zen#install() abort
             let l:cmd = "git clone " . l:plugin['remote'] . " " . l:install_path 
             call add(l:plugins_to_install, l:cmd)
         else
-            call setline(l:count, '[-] ' . l:plugin['name'] . ': ' . 'Skipped')
+            call setline(l:count, '[-] ' . l:plugin['name'] . ': ' . 'Already installed.')
         endif
         let l:count = l:count + 1
         redraw 
@@ -165,12 +165,12 @@ function! zen#install() abort
             let l:plugin_name = split(cmd, '/')[-1]
             let l:cmd_result =  system(l:cmd)
             if l:cmd_result =~ 'fatal'
-                let l:populate_window_message = l:populate_window_message . ' with errors'
                 let l:installation_status = 'x'
                 let l:cmd_result = 'Failed (' . l:cmd_result . ')'
+                let l:populate_window_message = l:populate_window_message . ' with errors'
             else
-                let l:installation_status = '+'
                 let l:cmd_result = 'Installed'
+                let l:installation_status = '+'
             endif
             call setline(s:plugin_display_order[l:plugin_name], '[' . l:installation_status . '] ' . l:plugin_name . ': ' . l:cmd_result)
             call s:load_plugin(l:plugin['name'])
@@ -243,10 +243,10 @@ function! zen#update() abort
 
     if len(g:plugins) > 1
         call s:update_python('update', [])
-        " call s:populate_window('Finished updating plugins!', 1)
         return
     endif
 
+    " TODO: rm this
     let l:count = 4
     for l:plugin in keys(g:plugins)
         let l:plugin_path = g:plugins[l:plugin]['path']
@@ -254,11 +254,11 @@ function! zen#update() abort
         let l:output = system(l:cmd)
         
         if l:output =~# '\mAlready up to date.'
-            call setline(l:count, '- ' . g:plugins[l:plugin]['name'] . ': Skipped (latest)')
+            call setline(l:count, '[-] ' . g:plugins[l:plugin]['name'] . ': Already up to date.')
         elseif l:output =~# '\mFrom'
-            call setline(l:count, '- ' . g:plugins[l:plugin]['name'] . ': Updated')
+            call setline(l:count, '[+] ' . g:plugins[l:plugin]['name'] . ': Updated')
         else
-            call setline(l:count, '- ' . g:plugins[l:plugin]['name'] . ': ERROR ' . l:output)
+            call setline(l:count, '[x] ' . g:plugins[l:plugin]['name'] . ': ERROR ' . l:output)
         endif
 
         redraw 
@@ -310,21 +310,22 @@ def install():
             thread = ZenThread(cmd, result_queue)
             thread_list.append(thread)
             thread.start()
-            # vim.eval('setline({0}, "- {1}: Installed")'.format(plugin_display_order[plugin_name], plugin_name))
+            vim.eval('setline({0}, "[+] {1}: Installing...")'.format(plugin_display_order[plugin_name], plugin_name))
         else:
-            vim.eval('setline({0}, "- {1}: Skipped")'.format(plugin_display_order[plugin_name], plugin_name))
+            vim.eval('setline({0}, "[-] {1}: Already installed.")'.format(plugin_display_order[plugin_name], plugin_name))
+        vim.command('redraw') 
         count += 1
 
     while threading.active_count() > 1 or not result_queue.empty():
         while not result_queue.empty():
             (cmd, output, status) = result_queue.get()
             plugin_name = cmd.split('/')[-1]
-            print cmd, output, status
             if status == 0:
                 vim.eval('s:load_plugin("{}")'.format(plugin_name))
-                vim.eval('setline({0}, "- {1}: Installed")'.format(plugin_display_order[plugin_name], plugin_name))
+                vim.eval('setline({0}, "[+] {1}: Installed")'.format(plugin_display_order[plugin_name], plugin_name))
             else:
-                vim.eval('setline({0}, "- {1}: [ERROR] {2}")'.format(plugin_display_order[plugin_name], plugin_name, output))
+                vim.eval('setline({0}, "[x] {1}: [ERROR] {2}")'.format(plugin_display_order[plugin_name], plugin_name, output))
+            vim.command('redraw')
 
     for thread in thread_list:
         thread.join()
@@ -332,24 +333,34 @@ def install():
     vim.eval('s:populate_window("Installation finished!\t|\t Time: {0}", 1)'.format(time.time()-start_time))
 
 
-# TODO: update this method to reflect status display
 def update():
-    plugins = vim.eval('g:plugins') 
-    result_queue = Queue.Queue()
     commands = list()
     git_cmd = 'git -C'
-    for key, value in plugins.items():
-        commands.append(str(git_cmd + ' \"' + value['path'] + '\" pull'))
+    result_queue = Queue.Queue()
+    plugins = vim.eval('g:plugins') 
+    populate_window_message = 'Finished installation'
+    plugin_display_order = vim.eval('s:plugin_display_order')
+    start_time = time.time()
 
-    for cmd in commands:
+    for key, value in plugins.items():
+        cmd = str(git_cmd + ' \"' + value['path'] + '\" pull')
         thread = ZenThread(cmd, result_queue)
         thread.start()
 
     while threading.active_count() > 1 or not result_queue.empty():
         while not result_queue.empty():
             (cmd, output, status) = result_queue.get()
+            plugin_name = cmd.split('/')[-1].split('"')[0]  # plugin name from git pull command
+            if status == 0:
+                # TODO: add check if already updated or not update status_message accordingly (+, -)
+                vim.eval('s:load_plugin("{}")'.format(plugin_name))
+                vim.eval('setline({0}, "[+] {1}: {2}")'.format(plugin_display_order[plugin_name], plugin_name, output))
+            else:
+                populate_window_message = 'Finished installation with errors'
+                vim.eval('setline({0}, "[x] {1}: [ERROR] {2}")'.format(plugin_display_order[plugin_name], plugin_name, output))
+            vim.command('redraw')
 
-    vim.eval('s:populate_window("Finished Updation!!", 1)')
+    vim.eval('s:populate_window("{0} | Time: {1}", 1)'.format(populate_window_message, time.time() - start_time))
 
 mode = vim.eval('a:mode')
 update() if mode == 'update' else install()
