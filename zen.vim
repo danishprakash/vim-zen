@@ -31,6 +31,25 @@ function! zen#init() abort
 endfunction
 
 
+" syntax highlighting
+function! s:syntax() abort
+    syntax clear
+    syntax match ZenSep /^=.*=/
+    syntax match ZenTitle /^vim-zen/
+    syntax match ZenPlus /\[+].*:/
+    syntax match ZenMinus /\[-].*:/ 
+    syntax match ZenSpace /\[ ].*:/ 
+    syntax match ZenDelete /\[x.\{-}:/
+
+    highlight link ZenPlus Function
+    highlight link ZenMinus Type
+    highlight link ZenSpace Comment
+    highlight link ZenSep Comment
+    highlight link ZenTitle Special
+    highlight link ZenDelete Exception 
+endfunction 
+
+
 function! s:git_installed() abort
     if !executable('git')
         echohl ErrorMsg
@@ -48,6 +67,7 @@ function! s:list_plugins() abort
         let s:plugin_display_order[g:plugins[l:plugin]['name']] = l:count 
         let l:count = l:count + 1
     endfor
+    call s:syntax()
     redraw 
 endfunction 
 
@@ -64,6 +84,7 @@ function! s:populate_window(message, flag) abort
         call setline(1, l:heading)
         call setline(2, repeat('=', len(l:heading)))
     endif
+    call s:syntax()
     redraw
 endfunction 
 
@@ -146,6 +167,7 @@ function! zen#install() abort
     let l:populate_window_message = 'Installation finished'
     call s:populate_window('Installing plugins...', 0)
     call s:list_plugins()
+
     for key in keys(g:plugins)
         let l:plugin = g:plugins[key]
         let l:install_path = s:installation_path . "/" . l:plugin['name']
@@ -158,34 +180,36 @@ function! zen#install() abort
         let l:count = l:count + 1
         redraw 
     endfor 
-    if len(l:plugins_to_install) > 1
-        call s:update_python('install', l:plugins_to_install)
+
+    if len(l:plugins_to_install) == 0
+        :
+    elseif len(l:plugins_to_install) > 1
+        call s:parallel_operation_python('install', l:plugins_to_install)
+        return
     else
-        for cmd in l:plugins_to_install 
-            let l:plugin_name = split(cmd, '/')[-1]
-            let l:cmd_result =  system(l:cmd)
-            if l:cmd_result =~ 'fatal'
-                let l:installation_status = 'x'
-                let l:cmd_result = 'Failed (' . l:cmd_result . ')'
-                let l:populate_window_message = l:populate_window_message . ' with errors'
-            else
-                let l:cmd_result = 'Installed'
-                let l:installation_status = '+'
-            endif
-            call setline(s:plugin_display_order[l:plugin_name], '[' . l:installation_status . '] ' . l:plugin_name . ': ' . l:cmd_result)
-            call s:load_plugin(l:plugin['name'])
-            let l:count = l:count + 1
-        endfor
-        call s:populate_window(l:populate_window_message, 1)
+        let l:plugin_name = split(cmd, '/')[-1]
+        let l:cmd_result =  system(l:cmd)
+        if l:cmd_result =~ 'fatal'
+            let l:installation_status = 'x'
+            let l:cmd_result = 'Failed (' . l:cmd_result . ')'
+            let l:populate_window_message = l:populate_window_message . ' with errors'
+        else
+            let l:cmd_result = 'Installed'
+            let l:installation_status = '+'
+        endif
+        call setline(s:plugin_display_order[l:plugin_name], '[' . l:installation_status . '] ' . l:plugin_name . ': ' . l:cmd_result)
+        call s:load_plugin(l:plugin_name)
     endif
     redraw
+    call s:populate_window(l:populate_window_message, 1)
 endfunction
 
 
+" display warning prompt and ask for input
 function! s:warning_prompt(message) abort
     call inputsave()
     echohl WarningMsg
-    let l:choice = input(a:message . ' (Y/N): ')
+    let l:choice = input(a:message . ' (y/n): ')
     echohl None
     call inputrestore()
     echo "\r"
@@ -218,6 +242,7 @@ function! zen#remove() abort
 
     if l:unused_plugins == []
         call append(line('$'), 'No plugins to remove.')
+        call s:populate_window('Done', 1)
         return
     endif
 
@@ -226,49 +251,25 @@ function! zen#remove() abort
         for l:item in l:unused_plugins 
             let l:plugin_name = split(l:item, '/')[-1]
             let l:cmd_result = system('rm -rf ' . l:item)
-            call setline(l:count, '[x] ' . l:item . ' - Removed!')
+            call setline(l:count, '[x] ' . l:item . ': Removed!')
             let l:count = l:count + 1
+            redraw
         endfor
     endif
-    redraw
     call s:populate_window('Finished cleaning!', 1)
 endfunction 
 
 
 " update plugins
-" TODO: show status on buffer, add [ ]
 function! zen#update() abort 
     call s:populate_window('Updating plugins..', 0)
     call s:list_plugins()
-
-    if len(g:plugins) > 1
-        call s:update_python('update', [])
-        return
-    endif
-
-    " TODO: rm this
-    let l:count = 4
-    for l:plugin in keys(g:plugins)
-        let l:plugin_path = g:plugins[l:plugin]['path']
-        let l:cmd = 'git -C "' . l:plugin_path . '" pull'
-        let l:output = system(l:cmd)
-        
-        if l:output =~# '\mAlready up to date.'
-            call setline(l:count, '[-] ' . g:plugins[l:plugin]['name'] . ': Already up to date.')
-        elseif l:output =~# '\mFrom'
-            call setline(l:count, '[+] ' . g:plugins[l:plugin]['name'] . ': Updated')
-        else
-            call setline(l:count, '[x] ' . g:plugins[l:plugin]['name'] . ': ERROR ' . l:output)
-        endif
-
-        redraw 
-        let l:count = l:count + 1
-    endfor
-    call s:populate_window('Finished updating plugins!', 1)
+    call s:parallel_operation_python('update', [])
 endfunction 
 
 
-function! s:update_python(mode, plugins_to_install) abort
+" python code for multithreaded operations
+function! s:parallel_operation_python(mode, plugins_to_install) abort
 let py_exe = has('python') ? 'python' : 'python3'
 execute py_exe "<< EOF"
 import vim
