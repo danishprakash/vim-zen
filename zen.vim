@@ -1,6 +1,6 @@
 " ==========================================================
 " Name:         vim-zen: Vim plugin manager
-" Author:       Danish Prakash
+" Maintainer:   Danish Prakash
 " HomePage:     https://github.com/prakashdanish/vim-zen
 " Version:      1.0.0
 " ==========================================================
@@ -278,8 +278,6 @@ import Queue
 import commands
 import threading
 
-COUNT = 4
-
 class ZenThread(threading.Thread):
     def __init__(self, cmd, queue):
         threading.Thread.__init__(self)
@@ -289,6 +287,7 @@ class ZenThread(threading.Thread):
     def run(self):
         (status, output) = commands.getstatusoutput(self.cmd)
         self.queue.put((self.cmd, output, status))
+
 
 def install():
     count = 4
