@@ -16,12 +16,12 @@ Put the [zen.vim](https://raw.githubusercontent.com/prakashdanish/vim-zen/master
 #### Unix
 ##### Neovim
 ```bash
-curl https://raw.githubusercontent.com/prakashdanish/vim-zen/master/zen.vim -o --create-dirs ~/.local/share/nvim/site/autoload/zen.vim
+curl -o ~/.local/share/nvim/site/autoload/zen.vim --create-dirs https://raw.githubusercontent.com/prakashdanish/vim-zen/master/zen.vim
 ```
 
 ##### Vim
 ```bash
-curl https://raw.githubusercontent.com/prakashdanish/vim-zen/master/zen.vim -o --create-dirs ~/.local/share/nvim/site/autoload/zen.vim
+curl -o ~/.vim/autoload/zen.vim --create-dirs https://raw.githubusercontent.com/prakashdanish/vim-zen/master/zen.vim
 ```
 
 ### Usage
@@ -32,7 +32,7 @@ curl https://raw.githubusercontent.com/prakashdanish/vim-zen/master/zen.vim -o -
 - Run `ZenInstall` from within vim.
 
 
-#### Example vim-zen section
+### Example vim-zen section
 ```vim
 " begin section
 call zen#init()
