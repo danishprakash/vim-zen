@@ -2,7 +2,7 @@
 <p align="center">Barebones Vim Plugin Manager</p>
 
 <p align="center">
-<a href="https://i.imgur.com/1oyhPPd.gif"><img src="https://i.imgur.com/1oyhPPd.gif" alt="Asciicast" width="570"/></a>
+<a href="https://i.imgur.com/1oyhPPd.gif"><img src="https://i.imgur.com/1oyhPPd.gif" alt="Asciicast" width="640"/></a>
 </p>
 
 ### Features
@@ -50,6 +50,9 @@ See [this](https://github.com/prakashdanish/dotfiles/blob/master/nvim/init.vim) 
 
 ### Why?
 I wanted something really simple, all other plugin managers out there did the things that I wanted along with other stuff. I wanted a plugin manager that helped me `install`, `remove`, and `update` the plugins I use.
+
+### Links
+- [Changelog Nightly (21/6)](http://nightly.changelog.com/2018/06/21/)
 
 ### License
 MIT
