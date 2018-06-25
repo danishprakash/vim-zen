@@ -20,10 +20,10 @@ function! zen#init() abort
         endif
         let s:installation_path = $HOME . '/.local/share/nvim/plugged'
     else
-        if !isdirectory($HOME . '.vim/plugged')
-            call mkdir($HOME . '.vim/plugged')
+        if !isdirectory($HOME . '/.vim/plugged')
+            call mkdir($HOME . '/.vim/plugged')
         endif
-        let s:installation_path = $HOME . '.vim/plugged'
+        let s:installation_path = $HOME . '/.vim/plugged'
     endif
 
     call s:define_commands()
