@@ -92,6 +92,9 @@ endfunction
 " source plugin files
 function! s:load_plugin(plugin) abort
     let l:plugin_path = g:plugins[a:plugin]['path']
+    if has_key(g:plugins[a:plugin], 'rtp')
+        let l:plugin_path = l:plugin_path . '/' . g:plugins[a:plugin]['rtp']
+    endif
     let l:patterns = ['plugin/**/*.vim', 'after/plugin/**/*.vim']
     for pattern in l:patterns
         for vimfile in split(globpath(l:plugin_path, pattern), '\n')
@@ -132,16 +135,21 @@ function! zen#add(remote, ...)
     endif
 
     let g:plugins[l:plugin_name] = {'name': l:plugin_name, 'remote': l:remote_name, 'path': l:plugin_dir}
+
+    if a:0 > 0
+        call extend(g:plugins[l:plugin_name], a:1)
+        if has_key(a:000[0], 'rtp')
+            let l:plugin_dir = l:plugin_dir . '/' . a:000[0]['rtp']
+            let g:plugins[l:plugin_name]['path'] = l:plugin_dir 
+        endif
+    endif
+
     if l:local
         let g:plugins[l:plugin_name]['local'] = l:local
     endif
+
     execute "set rtp+=" . l:plugin_dir 
     call add(g:plugin_names, l:plugin_name)
-
-    " TODO: add enable config
-    if a:0 == 1
-        let l:options = a:1
-    endif
 endfunction
 
 
@@ -288,14 +296,15 @@ import commands
 import threading
 
 class ZenThread(threading.Thread):
-    def __init__(self, cmd, queue):
+    def __init__(self, cmd, queue, name=''):
         threading.Thread.__init__(self)
         self.cmd = cmd
         self.queue = queue 
+        self.name = name
 
     def run(self):
         (status, output) = commands.getstatusoutput(self.cmd)
-        self.queue.put((self.cmd, output, status))
+        self.queue.put((self.cmd, output, status, self.name))
 
 
 def install():
@@ -327,7 +336,8 @@ def install():
 
     while threading.active_count() > 1 or not result_queue.empty():
         while not result_queue.empty():
-            (cmd, output, status) = result_queue.get()
+            # TODO: use name with queue
+            (cmd, output, status, name) = result_queue.get()
             plugin_name = cmd.split('/')[-1]
             if status == 0:
                 vim.eval('s:load_plugin("{}")'.format(plugin_name))
@@ -356,13 +366,13 @@ def update():
             vim.eval('setline({0}, "[-] {1}: {2}")'.format(plugin_display_order[key], key, '[ MANAGED MANUALLY ]'))
             continue
         cmd = str(git_cmd + ' \"' + value['path'] + '\" pull')
-        thread = ZenThread(cmd, result_queue)
+        thread = ZenThread(cmd, result_queue, name=value.get('name'))
         thread.start()
 
     while threading.active_count() > 1 or not result_queue.empty():
         while not result_queue.empty():
-            (cmd, output, status) = result_queue.get()
-            plugin_name = cmd.split('/')[-1].split('"')[0]  # plugin name from git pull command
+            (cmd, output, status, name) = result_queue.get()
+            plugin_name = name
             if status == 0:
                 # TODO: add check if already updated or not update status_message accordingly (+, -)
                 vim.eval('s:load_plugin("{}")'.format(plugin_name))
