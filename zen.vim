@@ -112,6 +112,7 @@ endfunction
 
 " load `g:plugins` with plugins in .vimrc
 function! zen#add(remote, ...)
+    let l:local = 0
     let l:plugin_name = split(a:remote, '/')[-1]
     let l:plugin_dir = s:installation_path . '/' . l:plugin_name 
 
@@ -120,6 +121,10 @@ function! zen#add(remote, ...)
 	elseif a:remote =~ '^http:\/\/.\+'
 		let l:remote_name = a:remote
 		let l:remote_name = substitute(l:remote, '^http:\/\/.\+', 'https://', '')
+    elseif isdirectory(a:remote)
+        let l:local = 1
+        let l:remote_name = a:remote
+        let l:plugin_dir = a:remote
 	elseif a:remote =~ '^.\+/.\+'
         let l:remote_name = 'https://github.com/' . a:remote . '.git'
 	else
@@ -127,6 +132,9 @@ function! zen#add(remote, ...)
     endif
 
     let g:plugins[l:plugin_name] = {'name': l:plugin_name, 'remote': l:remote_name, 'path': l:plugin_dir}
+    if l:local
+        let g:plugins[l:plugin_name]['local'] = l:local
+    endif
     execute "set rtp+=" . l:plugin_dir 
     call add(g:plugin_names, l:plugin_name)
 
@@ -162,7 +170,6 @@ endfunction
 
 " install plugins
 function! zen#install() abort
-    let l:count = 4
     let l:plugins_to_install = []
     let l:populate_window_message = 'Installation finished'
     call s:populate_window('Installing plugins...', 0)
@@ -171,13 +178,16 @@ function! zen#install() abort
     for key in keys(g:plugins)
         let l:plugin = g:plugins[key]
         let l:install_path = s:installation_path . "/" . l:plugin['name']
-        if !isdirectory(l:install_path)
+        if has_key(g:plugins[key], 'local')
+            call s:load_plugin(key)
+            call setline(s:plugin_display_order[key], '[-] ' . key . ': ' . '[ MANAGED MANUALLY ]')
+            continue
+        elseif !isdirectory(l:install_path)
             let l:cmd = "git clone " . l:plugin['remote'] . " " . l:install_path 
             call add(l:plugins_to_install, l:cmd)
         else
-            call setline(l:count, '[-] ' . l:plugin['name'] . ': ' . 'Already installed.')
+            call setline(s:plugin_display_order[g:plugins[key]['name']], '[-] ' . l:plugin['name'] . ': ' . 'Already installed.')
         endif
-        let l:count = l:count + 1
         redraw 
     endfor 
 
@@ -232,7 +242,6 @@ function! zen#remove() abort
         let l:plugin_dir_name = split(l:dir, '/')[-1]
         let l:plugin_dir_path = s:installation_path . "/" . l:plugin_dir_name 
         if !has_key(g:plugins, l:plugin_dir_name)
-            echom string(l:count)
             call add(l:unused_plugins, l:plugin_dir_path)
             call setline(l:count, '[ ] ' . l:plugin_dir_path)
             let l:count = l:count + 1
@@ -343,6 +352,9 @@ def update():
     start_time = time.time()
 
     for key, value in plugins.items():
+        if value.get('local') == str(1):
+            vim.eval('setline({0}, "[-] {1}: {2}")'.format(plugin_display_order[key], key, '[ MANAGED MANUALLY ]'))
+            continue
         cmd = str(git_cmd + ' \"' + value['path'] + '\" pull')
         thread = ZenThread(cmd, result_queue)
         thread.start()
