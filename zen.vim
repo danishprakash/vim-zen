@@ -291,9 +291,13 @@ let py_exe = has('python') ? 'python' : 'python3'
 execute py_exe "<< EOF"
 import vim
 import time
-import Queue
 import commands
 import threading
+
+try:
+    import queue
+except ImportError:
+    import Queue as queue
 
 class ZenThread(threading.Thread):
     def __init__(self, cmd, queue, name=''):
@@ -310,7 +314,7 @@ class ZenThread(threading.Thread):
 def install():
     count = 4
     thread_list = list()
-    result_queue = Queue.Queue()
+    result_queue = queue.Queue()
     plugins = vim.eval('g:plugins')
     path = vim.eval('s:installation_path')
     plugins_to_install = vim.eval('a:plugins_to_install')
@@ -355,7 +359,7 @@ def install():
 def update():
     commands = list()
     git_cmd = 'git -C'
-    result_queue = Queue.Queue()
+    result_queue = queue.Queue()
     plugins = vim.eval('g:plugins') 
     populate_window_message = 'Finished installation'
     plugin_display_order = vim.eval('s:plugin_display_order')
