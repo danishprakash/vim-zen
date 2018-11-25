@@ -11,17 +11,17 @@
 - Easy setup and simple usage.
 
 ### Installation
-Put the [zen.vim](https://raw.githubusercontent.com/prakashdanish/vim-zen/master/zen.vim) file into the `autoload` directory. 
+Put the [zen.vim](https://raw.githubusercontent.com/danishprakash/vim-zen/master/zen.vim) file into the `autoload` directory. 
 
 #### Unix
 ##### Neovim
 ```bash
-curl -o ~/.local/share/nvim/site/autoload/zen.vim --create-dirs https://raw.githubusercontent.com/prakashdanish/vim-zen/master/zen.vim
+curl -o ~/.local/share/nvim/site/autoload/zen.vim --create-dirs https://raw.githubusercontent.com/danishprakash/vim-zen/master/zen.vim
 ```
 
 ##### Vim
 ```bash
-curl -o ~/.vim/autoload/zen.vim --create-dirs https://raw.githubusercontent.com/prakashdanish/vim-zen/master/zen.vim
+curl -o ~/.vim/autoload/zen.vim --create-dirs https://raw.githubusercontent.com/danishprakash/vim-zen/master/zen.vim
 ```
 
 ### Usage
@@ -37,10 +37,10 @@ curl -o ~/.vim/autoload/zen.vim --create-dirs https://raw.githubusercontent.com/
 " begin section
 call zen#init()
 Plugin 'junegunn/goyo.vim' 
-Plugin 'https://github.com/prakashdanish/vimport'
+Plugin 'https://github.com/danishprakash/vimport'
 " end section
 ```
-See [this](https://github.com/prakashdanish/dotfiles/blob/master/nvim/init.vim) for reference.
+See [this](https://github.com/danishprakash/dotfiles/blob/master/nvim/init.vim) for reference.
 
 ### Commands
 

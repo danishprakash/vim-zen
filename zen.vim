@@ -1,8 +1,8 @@
 " ==========================================================
 " Name:         vim-zen: Vim plugin manager
 " Maintainer:   Danish Prakash
-" HomePage:     https://github.com/prakashdanish/vim-zen
-" Version:      1.0.0
+" HomePage:     https://github.com/danishprakash/vim-zen
+" License:      MIT
 " ==========================================================
 
 
